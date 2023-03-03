@@ -9,8 +9,8 @@ public class ContextCallable<V> implements Callable<V> {
 	private final Context     ctx;
 	private final Callable<V> wrapped;
 
-	public ContextCallable(Context ctx, Callable<V> wrapped) {
-		this.ctx = ctx;
+	public ContextCallable(Callable<V> wrapped) {
+		this.ctx = ThreadLocalContext.ctx.get();
 		this.wrapped = wrapped;
 	}
 
@@ -18,8 +18,10 @@ public class ContextCallable<V> implements Callable<V> {
 	public V call() throws Exception {
 		Context old = ThreadLocalContext.ctx.get();
 		ThreadLocalContext.ctx.set(ctx);
-		V result = wrapped.call();
-		ThreadLocalContext.ctx.set(old);
-		return result;
+		try {
+			return wrapped.call();
+		} finally {
+			ThreadLocalContext.ctx.set(old);
+		}
 	}
 }
