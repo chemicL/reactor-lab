@@ -7,10 +7,13 @@ import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
 import java.time.Duration;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.TimeUnit;
+import java.util.function.Function;
 
-public class E14_ReactiveFrameworkAttachedContext {
+public class E16_ReactiveContextSink {
 
 	private static final ThreadLocal<Long> CORRELATION_ID = new ThreadLocal<>();
 
@@ -53,9 +56,15 @@ public class E14_ReactiveFrameworkAttachedContext {
 
 	static Mono<Boolean> notifyShop(String productName) {
 		log("Notifying shop about: " + productName);
-		return Mono.just(true);
+		return makeRequest(productName)
+				.contextWrite(Function.identity())
+				.doOnNext(r -> log("Request done."));
 	}
 
+	static Mono<Boolean> makeRequest(String productName) {
+		return Mono.fromFuture(CompletableFuture.supplyAsync(() -> true,
+				CompletableFuture.delayedExecutor(100, TimeUnit.MILLISECONDS)));
+	}
 	static void log(String message) {
 		String threadName = Thread.currentThread().getName();
 		String threadNameTail = threadName.substring(Math.max(0, threadName.length() - 10));

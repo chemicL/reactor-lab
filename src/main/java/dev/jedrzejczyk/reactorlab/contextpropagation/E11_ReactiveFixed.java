@@ -9,7 +9,7 @@ import java.time.Duration;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ThreadLocalRandom;
 
-public class E11_ReactiveFixedDelaySubscrption {
+public class E11_ReactiveFixed {
 
 	private static final ThreadLocal<Long> CORRELATION_ID = new ThreadLocal<>();
 
@@ -19,11 +19,7 @@ public class E11_ReactiveFixedDelaySubscrption {
 				.registerThreadLocalAccessor("CORRELATION_ID",
 						CORRELATION_ID::get, CORRELATION_ID::set, CORRELATION_ID::remove);
 
-		Mono<Void> requestHandler = handleRequest();
-
-		Thread subscriberThread = new Thread(requestHandler::block);
-		subscriberThread.start();
-		subscriberThread.join();
+		handleRequest().block();
 	}
 
 	static Mono<Void> handleRequest() {

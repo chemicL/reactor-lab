@@ -1,13 +1,12 @@
 package dev.jedrzejczyk.reactorlab.contextpropagation;
 
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
-
-import java.time.Duration;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ThreadLocalRandom;
 
-public class E05_ReactiveBroken {
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+
+public class E05_ReactiveNaive {
 
 	private static final ThreadLocal<Long> CORRELATION_ID = new ThreadLocal<>();
 
@@ -20,7 +19,6 @@ public class E05_ReactiveBroken {
 		log("Assembling the chain");
 
 		return Mono.just("test-product")
-				.delayElement(Duration.ofMillis(1))
 				.flatMap(product ->
 						Flux.concat(
 										addProduct(product),

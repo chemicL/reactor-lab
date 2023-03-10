@@ -1,8 +1,8 @@
 package dev.jedrzejczyk.reactorlab.contextpropagation;
 
 import io.micrometer.context.ContextRegistry;
-import reactor.core.observability.DefaultSignalListener;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Hooks;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
@@ -10,25 +10,23 @@ import java.time.Duration;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ThreadLocalRandom;
 
-public class E12_ReactiveFixedWriteToContext {
+public class E15_ReactiveFrameworkAttachedContext {
 
 	private static final ThreadLocal<Long> CORRELATION_ID = new ThreadLocal<>();
 
 	public static void main(String[] args) throws InterruptedException, ExecutionException {
-
 		ContextRegistry.getInstance()
 				.registerThreadLocalAccessor("CORRELATION_ID",
 						CORRELATION_ID::get, CORRELATION_ID::set, CORRELATION_ID::remove);
+		Hooks.enableAutomaticContextPropagation();
 
-		Mono<Void> requestHandler = handleRequest();
+		Mono<Void> requestHandler = Mono.defer(() -> handleRequest())
+				.contextWrite(Context.of("CORRELATION_ID", correlationId()));
 
-		Thread subscriberThread = new Thread(requestHandler::block);
-		subscriberThread.start();
-		subscriberThread.join();
+		requestHandler.block();
 	}
 
 	static Mono<Void> handleRequest() {
-		// initRequest(); -- no write to ThreadLocal
 		log("Assembling the chain");
 
 		return Mono.just("test-product")
@@ -37,8 +35,7 @@ public class E12_ReactiveFixedWriteToContext {
 						Flux.concat(
 										addProduct(product),
 										notifyShop(product))
-								.then())
-				.contextWrite(Context.of("CORRELATION_ID", correlationId()));
+								.then());
 	}
 
 	static void initRequest() {
@@ -50,21 +47,13 @@ public class E12_ReactiveFixedWriteToContext {
 	}
 
 	static Mono<Void> addProduct(String productName) {
-		return Mono.<Void>empty()
-				.tap(() -> new DefaultSignalListener<>() {
-					@Override
-					public void doOnComplete() throws Throwable {
-						log("Adding product: " + productName);
-					}
-				});
+		log("Adding product: " + productName);
+		return Mono.empty();
 	}
 
 	static Mono<Boolean> notifyShop(String productName) {
-		return Mono.just(true)
-				.handle((result, sink) -> {
-					log("Notifying shop about: " + productName);
-					sink.next(result);
-				});
+		log("Notifying shop about: " + productName);
+		return Mono.just(true);
 	}
 
 	static void log(String message) {

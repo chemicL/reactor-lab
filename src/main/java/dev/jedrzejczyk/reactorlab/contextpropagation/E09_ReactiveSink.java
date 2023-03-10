@@ -1,19 +1,16 @@
 package dev.jedrzejczyk.reactorlab.contextpropagation;
 
-import org.reactivestreams.Subscription;
-import reactor.core.CoreSubscriber;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Hooks;
 import reactor.core.publisher.Mono;
-import reactor.core.publisher.Operators;
 import reactor.core.scheduler.Schedulers;
 
+import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 
-public class E09_ReactiveSinkHooks {
+public class E09_ReactiveSink {
 
 	private static final ThreadLocal<Long> CORRELATION_ID = new ThreadLocal<>();
 
@@ -21,18 +18,20 @@ public class E09_ReactiveSinkHooks {
 
 		Schedulers.onScheduleHook("context.propagation", WrappedRunnable::new);
 
-//		Hooks.onEachOperator(Operators.lift((scannable, subscriber) -> new CorrelatingSubscriber<>(subscriber)));
-		Hooks.onLastOperator(Operators.lift((scannable, subscriber) -> new CorrelatingSubscriber<>(subscriber)));
+		handleRequest().block();
+	}
 
-		initRequest();
-		addProduct("test-product")
-				.doOnSuccess(v -> log("Added."))
-				.block();
-
-		initRequest();
-		notifyShop("test-product")
-				.doOnSuccess(v -> log("Notified."))
-				.block();
+	static Mono<Void> handleRequest() {
+		return Mono.fromSupplier(() -> {
+			initRequest();
+			return "test-product";
+		}).flatMap(product ->
+				    Flux.concat(
+						        addProduct(product),
+						        notifyShop(product))
+				        .then())
+				.doOnSuccess(v -> log("Done!"))
+		.doFinally(signalType -> CORRELATION_ID.remove());
 	}
 
 	static void initRequest() {
@@ -46,21 +45,15 @@ public class E09_ReactiveSinkHooks {
 	static Mono<Void> addProduct(String productName) {
 		return Mono.defer(() -> {
 			log("Adding product: " + productName);
-			return makeRequest(productName)
-					.publishOn(Schedulers.single())
-					.then();
+			return Mono.<Void>empty()
+			           .delaySubscription(Duration.ofMillis(10), Schedulers.single());
 		});
 	}
 
 	static Mono<Boolean> notifyShop(String productName) {
 		return Mono.defer(() -> {
 			log("Notifying shop about: " + productName);
-			return makeRequest(productName)
-					.flatMapMany(result ->
-							Flux.just("result")
-									.map(x -> result))
-					.take(1)
-					.single();
+			return makeRequest(productName).hide();
 		});
 	}
 
@@ -95,40 +88,6 @@ public class E09_ReactiveSinkHooks {
 			} finally {
 				CORRELATION_ID.set(old);
 			}
-		}
-	}
-
-	static class CorrelatingSubscriber<T> implements CoreSubscriber<T> {
-		final CoreSubscriber<T> delegate;
-		Long correlationId;
-
-		public CorrelatingSubscriber(CoreSubscriber<T> delegate) {
-//			System.out.println("Creating correlating subscriber");
-			this.delegate = delegate;
-		}
-
-		@Override
-		public void onSubscribe(Subscription s) {
-			delegate.onSubscribe(s);
-			this.correlationId = CORRELATION_ID.get();
-		}
-
-		@Override
-		public void onNext(T t) {
-			CORRELATION_ID.set(this.correlationId);
-			delegate.onNext(t);
-		}
-
-		@Override
-		public void onError(Throwable t) {
-			CORRELATION_ID.set(this.correlationId);
-			delegate.onError(t);
-		}
-
-		@Override
-		public void onComplete() {
-			CORRELATION_ID.set(this.correlationId);
-			delegate.onComplete();
 		}
 	}
 }
