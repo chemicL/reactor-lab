@@ -1,20 +1,14 @@
 package dev.jedrzejczyk.reactorlab.contextpropagation;
 
-import org.reactivestreams.Subscription;
-import reactor.core.CoreSubscriber;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Hooks;
-import reactor.core.publisher.Mono;
-import reactor.core.publisher.Operators;
-import reactor.core.scheduler.Schedulers;
-
 import java.time.Duration;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ThreadLocalRandom;
-import java.util.concurrent.TimeUnit;
 
-public class E06_ReactiveSink {
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
+
+public class E06_ReactiveCleanup {
 
 	private static final ThreadLocal<Long> CORRELATION_ID = new ThreadLocal<>();
 
@@ -22,20 +16,26 @@ public class E06_ReactiveSink {
 
 		Schedulers.onScheduleHook("context.propagation", WrappedRunnable::new);
 
+		log("Got first request, calling handler");
+		handleRequest().block();
+
+		log("Got second request, calling handler");
+		log("There should be no correlationId on this line!");
+
 		handleRequest().block();
 	}
 
 	static Mono<Void> handleRequest() {
 		return Mono.fromSupplier(() -> {
-			initRequest();
-			return "test-product";
-		}).flatMap(product ->
-				    Flux.concat(
-						        addProduct(product),
-						        notifyShop(product))
-				        .then())
-				.doOnSuccess(v -> log("Done!"))
-		.doFinally(signalType -> CORRELATION_ID.remove());
+					initRequest();
+					return "test-product";
+				}).flatMap(product ->
+						Flux.concat(
+										addProduct(product),
+										notifyShop(product))
+								.then())
+				.doOnSuccess(v -> log("Done."))
+				.doFinally(signalType -> CORRELATION_ID.remove());
 	}
 
 	static void initRequest() {
@@ -57,13 +57,8 @@ public class E06_ReactiveSink {
 	static Mono<Boolean> notifyShop(String productName) {
 		return Mono.defer(() -> {
 			log("Notifying shop about: " + productName);
-			return makeRequest(productName).hide();
+			return Mono.just(true);
 		});
-	}
-
-	static Mono<Boolean> makeRequest(String productName) {
-		return Mono.fromFuture(CompletableFuture.supplyAsync(() -> true,
-				CompletableFuture.delayedExecutor(100, TimeUnit.MILLISECONDS)));
 	}
 
 	static void log(String message) {
@@ -72,9 +67,7 @@ public class E06_ReactiveSink {
 		System.out.printf("[%10s][%20s] %s%n",
 				threadNameTail, CORRELATION_ID.get(), message);
 	}
-
 	static class WrappedRunnable implements Runnable {
-
 		private final Long correlationId;
 		private final Runnable wrapped;
 

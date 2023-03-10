@@ -1,25 +1,14 @@
 package dev.jedrzejczyk.reactorlab.contextpropagation;
 
 import java.time.Duration;
-import java.util.Collection;
-import java.util.List;
-import java.util.concurrent.Callable;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.ThreadLocalRandom;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
 
-public class E04_ReactiveContext {
+public class E07_ReactiveContext {
 
 	public static void main(String[] args) throws InterruptedException, ExecutionException {
 		long correlationId = correlationId();

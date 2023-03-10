@@ -1,32 +1,22 @@
 package dev.jedrzejczyk.reactorlab.contextpropagation;
 
-import io.micrometer.context.ContextRegistry;
 import reactor.core.publisher.Flux;
-import reactor.core.publisher.Hooks;
 import reactor.core.publisher.Mono;
-import reactor.util.context.Context;
 
 import java.time.Duration;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ThreadLocalRandom;
 
-public class E12_ReactiveFrameworkAttachedContext {
+public class E05_ReactiveBroken {
 
 	private static final ThreadLocal<Long> CORRELATION_ID = new ThreadLocal<>();
 
 	public static void main(String[] args) throws InterruptedException, ExecutionException {
-		ContextRegistry.getInstance()
-				.registerThreadLocalAccessor("CORRELATION_ID",
-						CORRELATION_ID::get, CORRELATION_ID::set, CORRELATION_ID::remove);
-		Hooks.enableAutomaticContextPropagation();
-
-		Mono<Void> requestHandler = Mono.defer(() -> handleRequest())
-				.contextWrite(Context.of("CORRELATION_ID", correlationId()));
-
-		requestHandler.block();
+		handleRequest().block();
 	}
 
 	static Mono<Void> handleRequest() {
+		initRequest();
 		log("Assembling the chain");
 
 		return Mono.just("test-product")

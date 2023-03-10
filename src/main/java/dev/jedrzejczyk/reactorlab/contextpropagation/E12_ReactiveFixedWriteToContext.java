@@ -4,12 +4,13 @@ import io.micrometer.context.ContextRegistry;
 import reactor.core.observability.DefaultSignalListener;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.util.context.Context;
 
 import java.time.Duration;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ThreadLocalRandom;
 
-public class E08_ReactiveFixed {
+public class E12_ReactiveFixedWriteToContext {
 
 	private static final ThreadLocal<Long> CORRELATION_ID = new ThreadLocal<>();
 
@@ -19,11 +20,15 @@ public class E08_ReactiveFixed {
 				.registerThreadLocalAccessor("CORRELATION_ID",
 						CORRELATION_ID::get, CORRELATION_ID::set, CORRELATION_ID::remove);
 
-		handleRequest().block();
+		Mono<Void> requestHandler = handleRequest();
+
+		Thread subscriberThread = new Thread(requestHandler::block);
+		subscriberThread.start();
+		subscriberThread.join();
 	}
 
 	static Mono<Void> handleRequest() {
-		initRequest();
+		// initRequest(); -- no write to ThreadLocal
 		log("Assembling the chain");
 
 		return Mono.just("test-product")
@@ -33,7 +38,7 @@ public class E08_ReactiveFixed {
 										addProduct(product),
 										notifyShop(product))
 								.then())
-				.contextCapture();
+				.contextWrite(Context.of("CORRELATION_ID", correlationId()));
 	}
 
 	static void initRequest() {
