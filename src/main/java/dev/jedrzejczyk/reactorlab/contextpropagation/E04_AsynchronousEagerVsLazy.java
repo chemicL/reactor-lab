@@ -14,7 +14,7 @@ public class E04_AsynchronousEagerVsLazy {
 
 	public static void main(String[] args) throws InterruptedException, ExecutionException {
 
-		System.out.println("CompletableFuture:");
+		System.out.println("CompletableFuture is eager:");
 		initRequest();
 		CompletableFuture<String> handler = CompletableFuture.supplyAsync(() -> {
 			log("Processing request.");
@@ -26,8 +26,8 @@ public class E04_AsynchronousEagerVsLazy {
 		log("Woke up. Let's fetch the result.");
 		log("Got: " + handler.get());
 
-		
-		System.out.println("Reactive:");
+
+		System.out.println("Reactive is lazy:");
 		initRequest();
 		Mono<String> reactiveHandler = Mono.fromSupplier(() -> {
 			log("Processing request.");
