@@ -6,7 +6,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.atomic.AtomicInteger;
 
-public class MultipartyRandezvous {
+public class MultipartyRendezvous {
 
 	public static void main(String[] args) {
 		int participants = Runtime.getRuntime().availableProcessors() + 1;
